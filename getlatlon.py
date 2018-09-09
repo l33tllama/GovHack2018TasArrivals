@@ -5,12 +5,14 @@ import csv
 import pprint
 from datetime import datetime, timedelta
 
+gmaps_apikey = "notforyou"
+
 def geocode_location(location):
 	
 	if len(location) > 0:
 		location = urllib.parse.quote(location)
 		print("Requesting location for " + location)	
-		r = urllib.request.urlopen('https://maps.googleapis.com/maps/api/geocode/json?address=' + location + '&key=AIzaSyAs_NIPbbbBDRJs6g8CDUunqCNz3GK9Sqw')
+		r = urllib.request.urlopen('https://maps.googleapis.com/maps/api/geocode/json?address=' + location + '&key=' + gmaps_apikey)
 		resp_str = r.read()
 		#print(resp_str)
 		resp_obj = json.loads(resp_str)
