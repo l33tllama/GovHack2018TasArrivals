@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<script src="js/leaflet.js"></script>
+	<script src="https://unpkg.com/leaflet.boatmarker/leaflet.boatmarker.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/dragdealer.js"></script>
+	<script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
+	<!--<script src="bower_components/d3/d3.min.js"></script>-->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+	<script src="js/cal-heatmap.min.js"></script>
+	<script src="js/geo.js"></script>
+	<script src="js/jquery-3.3.1.min.js"></script>
+
+	<link rel="stylesheet" href="css/leaflet.css">
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="css/cal-heatmap.css">
+	<link rel="stylesheet" href="css/dragdealer.css">
+	<link rel="stylesheet" href="css/fontawesome.min.css">
+	
+	<style>
+	#map { height: 480px; }
+	#year-heatmap{
+
+	}
+	.col-pad {
+		background: #f00;
+	}
+	</style>
+    
+</head>
+<body>
+	<div class="container">
+		<nav cass="navbar">
+			<a class="navbar-brand" href="#">Arrivals</a>
+		</nav>
+		<div class="row" id="map"></div>
+		
+		<!--<div class="row" id="controls">
+			<div id="year-select"></div>
+			<div id="month-select">
+				<select id="month">
+					<option value="jan">January</option>
+					<option value="feb">February</option>
+					<option value="mar">March</option>
+					<option value="apr">April</option>
+					<option value="may">May</option>
+					<option value="jun">June</option>
+					<option value="jul">July</option>
+					<option value="aug">August</option>
+					<option value="sep">September</option>
+					<option value="oct">October</option>
+					<option value="nov">November</option>
+					<option value="dec">December</option>
+				</select>
+			</div>
+			<div id="day"></div>			
+		</div>-->
+		<div id="year-slider" class="dragdealer row">
+				<div class="handle red-bar value"></div>
+			</div>
+		<div class="row" id="heatmap-container">
+			<!--<div class="col"></div>-->
+			<div class="col-6" id="year-heatmap"></div->
+			<!--<div class="col"></div>-->
+		</div>
+	</div>
+	<script type="text/javascript">
+
+		var cal = new CalHeatMap();
+		var dragBar = new Dragdealer('year-slider', {
+			steps: 365,
+			animationCallback: function(x,y){
+				//console.log(document.getElementById('year-slider'));
+				var doy = Math.round(x*365);
+				var date = new Date(currentYear, 1 ,1);
+				date.setDate(date.getDate() + doy);
+				updateSliderLabel(date);
+			}
+		});
+		var mymap = L.map('map').setView([-41.4545196, 145.9706647], 13);
+		var taslatlon = [-41.4545196, 145.9706647];
+
+		var yearData;
+		var lines = [];
+		var boats = [];
+		var currentYear = 1854;
+		var loaded = false;
+
+		updateSliderLabel(new Date(currentYear, 1, 1));
+
+		function updateSliderLabel(date){
+			var month = date.getMonth();
+			var dom = date.getDate();
+			var label = currentYear +"-"+month+"-"+dom;
+			$('#year-slider .value').text(label);
+			clearLines(lines);
+			lines = [];
+			if(loaded){
+				drawDayLines(getDataOnDay(date), lines);	
+			}
+			
+		}
+
+		function clearBoats(){
+
+		}
+
+		function clearLines(_lines){
+			if(_lines != null){
+				for(var i = 0; i < lines.length; i++){
+					mymap.removeLayer(lines[i]);
+				}
+				lines = [];	
+			}
+		}
+
+		function drawDayLines(dayData, _lines){
+
+			minlat = taslatlon[0];
+			maxlat = taslatlon[0];
+			minlon = taslatlon[1];
+			maxlon = taslatlon[1];
+			for(var i = 0; i < dayData.length; i++){
+
+				var latlngs = [taslatlon];
+				latLon = dayData[i][21].split(",");
+				latLon[0] = parseFloat(latLon[0].substring(2, latLon[0].length-1));
+				latLon[1] = parseFloat(latLon[1].substring(2, latLon[1].length-2));
+				/*if(i == 0){
+					minlat = latLon[0];
+					maxlat = latLon[0];
+					minlon = latLon[1];
+					maxlon = latLon[1];
+				}*/
+				if(latLon[0] < minlat){
+					minlat = latLon[0];
+				}
+				if(latLon[0] > maxlat){
+					maxlat = latLon[0];
+				}
+				if(latLon[1] < minlon){
+					minlon = latLon[1];
+				}
+				if(latLon[1] > maxlon){
+					maxlon = latLon[1];
+				}
+
+				latlngs.push(latLon);
+				//console.log
+				//console.log(latLon);
+				var polyline = L.polyline(latlngs, {color: 'red'}).addTo(mymap);
+				if(_lines != null){
+					_lines.push(polyline);
+				}
+				
+			}
+			console.log(minlat, maxlat, minlon, maxlon);
+			mymap.fitBounds([[minlat, minlon],[maxlat,maxlon]]);
+		}
+
+		function drawDayBoats(){
+
+		}
+
+		function getDataOnDay(date){
+			console.log("Querying " + yearData.length + " records");
+			var dayData = [];
+			//var dateTest = yearData[0][17];
+			var ymd = yearData[0][17];
+				// YYYY-MM-DD
+
+			var y = ymd.substring(0,4);
+			var m = ymd.substring(5,7);
+			var d = ymd.substring(8,10);
+			console.log(date.getDate() + "/" + date.getMonth());
+			//var dateTestDate = new Date(dateTest * 1000);
+			console.log(ymd+ "/" + y + " " + m + " " + d);
+			console.log(parseInt(m) + " " + parseInt(d));
+			for(var i = 0; i < yearData.length; i++){
+				var ymd = yearData[i][17];
+				// YYYY-MM-DD
+
+				var y = ymd.substring(0,4);
+				var m = ymd.substring(5,7);
+				var d = ymd.substring(8,10);
+				
+				//var dataDate = new Date(y,m,d);
+				//dataDate.setDate(dataDate.getDate() - 365);
+				if(parseInt(d) == date.getDate()-1 &&
+					parseInt(m) == date.getMonth() +1){
+					dayData.push(yearData[i]);
+					//console.log(dataDate);
+					//console.log(date.getDate())
+					//console.log(dataDate.getDate());
+					//console.log(y + " " + m + " " + d);
+				}
+
+			}
+			console.log("Found " + dayData.length + " items on " + date);
+			return dayData;
+		}
+
+		function calHeatmapOnClick(date, val){
+			console.log("selected date" + date);
+			dayData = getDataOnDay(date);
+			clearLines();
+			drawDayLines(dayData);
+			updateSliderLabel(date);
+			var start = new Date(currentYear, 0, 0);
+			var diff = date - start;
+			var oneDay = 1000 * 60 * 60 * 24;
+			var day = Math.floor(diff / oneDay);
+			dragBar.setValue(day / 365, 0);
+		}
+
+		// Test year 1885
+		function onCalYearData(){
+			console.log("loaded cal year");
+			var resp = this.responseText;
+			resp_obj = JSON.parse(resp);
+			console.log(resp_obj);
+			cal.init({
+				data:resp_obj,
+				itemSelector: "#year-heatmap",
+				domain: "month",
+				subDomain: "day",
+				start: new Date(currentYear +" 01 01"),
+				maxDate: new Date(currentYear +" 12 31"),
+				range: 12,
+				onClick: calHeatmapOnClick
+			});
+		}
+
+		function onYearData(){
+			yearData = JSON.parse(this.responseText);
+			loaded = true;
+		}
+
+		//var localhost = 
+
+		var yearReqCal = new XMLHttpRequest();
+		yearReqCal.addEventListener("load", onCalYearData);
+		yearReqCal.open("GET", "./year_data/" + currentYear+"-cal.json");
+		yearReqCal.send();
+
+		var yearReq = new XMLHttpRequest();
+		yearReq.addEventListener("load", onYearData);
+		yearReq.open("GET", "./year_data/"+currentYear+".json");
+		yearReq.send();
+
+		var londonlatlon = [51.5073509, -0.1277583];
+		
+		var sydneylaton = [-33.8688197, 151.2092955];
+		
+		L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		    maxZoom: 16,
+		    id: 'mapbox.streets',
+		    accessToken: 'pk.eyJ1IjoibDMzdGxsYW1hIiwiYSI6IlFRTUwwcVUifQ.mjoCYdLshBIwW1DBCvkDHw'
+		}).addTo(mymap);
+
+		var latlngs = [
+			sydneylaton,
+			taslatlon		    
+		];
+
+		/*var point1 = turf.point(londonlatlon);
+		var point2 = turf.point(taslatlon);
+		var bearing = turf.bearing(point1, point2);
+		
+		console.log(bearing);*/
+		var myInitialBearing = geo.bearing(taslatlon[0],taslatlon[1],sydneylaton[0],sydneylaton[1]);
+		console.log(myInitialBearing);
+		//var polyline = L.polyline(latlngs, {color: 'red'}).addTo(mymap);
+		// zoom the map to the polyline
+		//mymap.fitBounds(polyline.getBounds());
+		
+		/*var boatMarker = L.boatMarker(mymap.getCenter(), {
+	  		color: "#f1c40f", 	// color of the boat
+			idleCircle: false	// if set to true, the icon will draw a circle if
+							// boatspeed == 0 and the ship-shape if speed > 0
+		}).addTo(mymap);
+		boatMarker.setHeading(myInitialBearing + 180); */
+			//pk.eyJ1IjoibDMzdGxsYW1hIiwiYSI6IlFRTUwwcVUifQ.mjoCYdLshBIwW1DBCvkDHw8/
+	</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+Web client
+- array for each day of year
+- cal heatmap showing each day
+- day, month, year selectors
